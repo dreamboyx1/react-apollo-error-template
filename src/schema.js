@@ -5,51 +5,88 @@ import {
   GraphQLID,
   GraphQLString,
   GraphQLList,
-} from 'graphql';
+  GraphQLBoolean,
+  GraphQLInt,
+} from "graphql";
+
+const PageInfoType = new GraphQLObjectType({
+  name: "PageInfo",
+  fields: {
+    startCursor: { type: GraphQLString },
+    endCursor: { type: GraphQLString },
+    hasNextPage: { type: GraphQLBoolean },
+    hasPreviousPage: { type: GraphQLBoolean },
+  },
+});
 
 const PersonType = new GraphQLObjectType({
-  name: 'Person',
+  name: "Person",
   fields: {
     id: { type: GraphQLID },
     name: { type: GraphQLString },
   },
 });
 
-const peopleData = [
-  { id: 1, name: 'John Smith' },
-  { id: 2, name: 'Sara Smith' },
-  { id: 3, name: 'Budd Deey' },
-];
+const PersonEdgeType = new GraphQLObjectType({
+  name: "PersonEdge",
+  fields: {
+    cursor: { type: GraphQLString },
+    node: { type: PersonType },
+  },
+});
+
+const PersonConnectionType = new GraphQLObjectType({
+  name: "PersonConnection",
+  fields: {
+    edges: { type: new GraphQLList(PersonEdgeType) },
+    pageInfo: { type: PageInfoType },
+  },
+});
+
+const peopleData = {
+  edges: [
+    { cursor: 1, node: { id: 1, name: "John Smith" } },
+    { cursor: 2, node: { id: 2, name: "Sara Smith" } },
+    { cursor: 3, node: { id: 3, name: "Budd Deey" } },
+  ],
+  pageInfo: {
+    startCursor: 1,
+    endCursor: 3,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  },
+};
+
+const emptyPeopleData = {
+  edges: [],
+  pageInfo: {
+    startCursor: null,
+    endCursor: null,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  },
+};
 
 const QueryType = new GraphQLObjectType({
-  name: 'Query',
+  name: "Query",
   fields: {
     people: {
-      type: new GraphQLList(PersonType),
-      resolve: () => peopleData,
-    },
-  },
-});
-
-const MutationType = new GraphQLObjectType({
-  name: 'Mutation',
-  fields: {
-    addPerson: {
-      type: PersonType,
+      type: PersonConnectionType,
       args: {
-        name: { type: GraphQLString },
+        last: { type: GraphQLInt },
+        before: { type: GraphQLString },
       },
-      resolve: function (_, { name }) {
-        const person = {
-          id: peopleData[peopleData.length - 1].id + 1,
-          name,
-        };
-
-        peopleData.push(person);
-        return person;
-      }
+      resolve: (_source, args) => {
+        console.log(`args: ${JSON.stringify(args)}`);
+        if (args.before) {
+          return emptyPeopleData;
+        }
+        return peopleData;
+      },
     },
   },
 });
 
-export const schema = new GraphQLSchema({ query: QueryType, mutation: MutationType });
+export const schema = new GraphQLSchema({
+  query: QueryType,
+});
