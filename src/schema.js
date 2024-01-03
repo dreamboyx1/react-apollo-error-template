@@ -44,14 +44,10 @@ const PersonConnectionType = new GraphQLObjectType({
 });
 
 const peopleData = {
-  edges: [
-    { cursor: 1, node: { id: 1, name: "John Smith" } },
-    { cursor: 2, node: { id: 2, name: "Sara Smith" } },
-    { cursor: 3, node: { id: 3, name: "Budd Deey" } },
-  ],
+  edges: [{ cursor: "0", node: { id: 0, name: "John Smith" } }],
   pageInfo: {
-    startCursor: 1,
-    endCursor: 3,
+    startCursor: "0",
+    endCursor: "0",
     hasNextPage: false,
     hasPreviousPage: false,
   },
@@ -87,6 +83,36 @@ const QueryType = new GraphQLObjectType({
   },
 });
 
+const MutationType = new GraphQLObjectType({
+  name: "Mutation",
+  fields: {
+    addPerson: {
+      type: PersonType,
+      args: {
+        name: { type: GraphQLString },
+      },
+      resolve: function (_, { name }) {
+        const person = {
+          id: peopleData.edges.length
+            ? peopleData.edges[peopleData.edges.length - 1].node.id + 1
+            : 0,
+          name,
+        };
+
+        const edge = {
+          cursor: `${person.id}`,
+          node: person,
+        };
+
+        peopleData.edges = [...peopleData.edges, edge];
+        peopleData.pageInfo.endCursor = edge.cursor;
+        return person;
+      },
+    },
+  },
+});
+
 export const schema = new GraphQLSchema({
   query: QueryType,
+  mutation: MutationType,
 });

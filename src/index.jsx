@@ -1,5 +1,5 @@
 /*** APP ***/
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useReducer } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { createRoot } from "react-dom/client";
 import {
@@ -47,8 +47,12 @@ const ADD_PERSON = gql`
 
 function App() {
   const [name, setName] = useState("");
-  const { loading, data, fetchMore } = useQuery(ALL_PEOPLE);
+  const { loading, data, fetchMore } = useQuery(ALL_PEOPLE, {
+    notifyOnNetworkStatusChange: true,
+  });
+  const [, forceUpdate] = useReducer((x) => x + 1, 0);
 
+  console.log(`data: ${JSON.stringify(data)}`);
   const loadMorePeople = useCallback(async () => {
     if (!data || !fetchMore) {
       return;
@@ -70,9 +74,76 @@ function App() {
     }
   }, [data, fetchMore]);
 
+  const [addPerson] = useMutation(ADD_PERSON, {
+    update: (cache, { data: { addPerson: addPersonData } }) => {
+      cache.modify({
+        fields: {
+          people(existing, { storeFieldName, fieldName, toReference }) {
+            const personRef = toReference(addPersonData);
+
+            if (!personRef) {
+              return existing;
+            }
+
+            console.log(`existing: ${JSON.stringify(existing, undefined, 2)}`);
+            if (!existing) {
+              existing = {
+                edges: [],
+                pageInfo: {
+                  hasPreviousPage: false,
+                  hasNextPage: false,
+                  startCursor: null,
+                  endCursor: null,
+                  __typename: "PageInfo",
+                },
+                __typename: "PersonConnection",
+              };
+            }
+
+            const edge = {
+              __typename: "PersonEdge",
+              cursor: "",
+              node: personRef,
+            };
+
+            const updated = {
+              ...existing,
+              edges: [...existing.edges, edge],
+            };
+
+            return updated;
+          },
+        },
+      });
+    },
+  });
+
+  const handleAddPerson = useCallback(async () => {
+    console.log(`name "${name}"`);
+
+    const trimmed = name.trim();
+
+    if (!trimmed) {
+      return;
+    }
+    const res = await addPerson({ variables: { name: trimmed } });
+    console.log(`res: ${JSON.stringify(res, undefined, 2)}`);
+    setName("");
+  }, [addPerson, setName, name]);
+
   return (
     <main>
       <h3>Home</h3>
+      <div className="add-person">
+        <label htmlFor="name">Name</label>
+        <input
+          type="text"
+          name="name"
+          value={name}
+          onChange={(evt) => setName(evt.target.value)}
+        />
+        <button onClick={handleAddPerson}>Add person</button>
+      </div>
       <h2>Names</h2>
       {loading ? (
         <p>Loading…</p>
@@ -84,6 +155,7 @@ function App() {
         </ul>
       )}
       <button onClick={loadMorePeople}>Load more</button>
+      <button onClick={forceUpdate}>Re-render</button>
     </main>
   );
 }
