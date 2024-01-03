@@ -10,7 +10,7 @@ import {
   useQuery,
   useMutation,
 } from "@apollo/client";
-import { relayStylePagination } from "@apollo/client/utilities";
+import { relayStylePagination } from "./pagination.ts";
 import { link } from "./link.js";
 import { Subscriptions } from "./subscriptions.jsx";
 import { Layout } from "./layout.jsx";
@@ -144,6 +144,8 @@ function App() {
         />
         <button onClick={handleAddPerson}>Add person</button>
       </div>
+      <h3>PageInfo</h3>
+      <pre>{JSON.stringify(data?.people.pageInfo, undefined, 2)}</pre>
       <h2>Names</h2>
       {loading ? (
         <p>Loading…</p>
@@ -154,7 +156,7 @@ function App() {
           ))}
         </ul>
       )}
-      <button onClick={loadMorePeople}>Load more</button>
+      <button onClick={loadMorePeople}>Fetch more</button>
       <button onClick={forceUpdate}>Re-render</button>
     </main>
   );
